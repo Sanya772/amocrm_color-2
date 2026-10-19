@@ -8,182 +8,43 @@
             padding: 12px;
             background: transparent;
             margin: 0;
+            color: #4a5568;
         }
 
-        h4 { margin: 0 0 12px 0; color: #333; }
+        h4 { margin: 0 0 15px 0; color: #2d3748; font-size: 16px; }
 
         .settings-panel {
-            background: #f5f7fa;
+            background: #f7fafc;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 16px;
+            padding: 15px;
+            margin-bottom: 15px;
         }
 
         .color-row {
             display: flex;
             align-items: center;
             margin-bottom: 10px;
+            flex-wrap: wrap;
         }
 
         .color-label {
-            width: 140px; margin-right: 10px; color: #4a5568; }
+            min-width: 130px; 
+            margin-right: 10px; 
+            color: #4a5568; 
+            font-weight: 500;
+        }
 
         input[type="color"] {
             border: none;
             cursor: pointer;
-            height: 32px;
-            width: 40px;
-            border-radius: 4px;
+            height: 34px;
+            width: 42px;
+            border-radius: 6px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            margin-right: 8px;
         }
 
         .preview-box {
             display: inline-block;
-            width: 24px; height: 24px;
-            border-radius: 4px; margin-left: 8px; vertical-align: middle;
-        }
-
-        .btn-apply {
-            background: #00b5ff; color: white; border: none; padding: 8px 16px;
-            border-radius: 6px; cursor: pointer; font-weight: 600;
-        }
-        .btn-apply:hover { background: #009ad9; }
-
-        /* Стили для раскрашенных задач */
-        .amo-task-row-low { background-color: rgba(209, 230, 249, 0.6) !important; }
-        .amo-task-row-medium { background-color: rgba(254, 226, 208, 0.6) !important; }
-        .amo-task-row-high { background-color: rgba(252, 221, 221, 0.6) !important; }
-        .amo-task-row-critical { background-color: rgba(248, 184, 184, 0.8) !important; color: #9b2c2c; }
-
-        .status-msg { margin-top: 10px; font-size: 13px; color: #666; display: none; }
-        .status-success { color: #27ae60; }
-    </style>
-</head>
-<body>
-    <h4>🎨 Раскраска задач по важности</h4>
-
-    <div class="settings-panel">
-        <div class="color-row">
-            <span class="color-label">Низкая важность</span>
-            <input type="color" id="color-low" value="#d1e6f9">
-            <div id="preview-low" class="preview-box"></div>
-        </div>
-        <div class="color-row">
-            <span class="color-label">Средняя важность</span>
-            <input type="color" id="color-medium" value="#fee2d0">
-            <div id="preview-medium" class="preview-box"></div>
-        </div>
-        <div class="color-row">
-            <span class="color-label">Высокая важность</span>
-            <input type="color" id="color-high" value="#fcd9d9">
-            <div id="preview-high" class="preview-box"></div>
-        </div>
-        <div class="color-row">
-            <span class="color-label">Критическая важность</span>
-            <input type="color" id="color-critical" value="#f8b8b8">
-            <div id="preview-critical" class="preview-box"></div>
-        </div>
-
-        <button class="btn-apply" id="btn-save">Сохранить цвета</button>
-        <p class="status-msg" id="status-msg">Цвета сохранены!</p>
-    </div>
-
-    <p style="font-size:13px; color:#666;">
-        Задачи будут окрашены автоматически при загрузке карточки. Условия раскраски задаются в коде (можно доработать под твои поля).
-    </p>
-
-    <!-- SDK amoCRM -->
-    <script src="https://static.amocrm.com/widgets/sdk.js"></script>
-    <script>
-        AmoWidgets.init(function(amo) {
-            // --- Инициализация настроек ---
-            const colors = {
-                low: document.getElementById('color-low'),
-                medium: document.getElementById('color-medium'),
-                high: document.getElementById('color-high'),
-                critical: document.getElementById('color-critical')
-            };
-
-            const previews = {
-                low: document.getElementById('preview-low'),
-                medium: document.getElementById('preview-medium'),
-                high: document.getElementById('preview-high'),
-                critical: document.getElementById('preview-critical')
-            };
-
-            const statusMsg = document.getElementById('status-msg');
-
-            // Загружаем сохранённые цвета
-            Object.keys(colors).forEach(key => {
-                const saved = localStorage.getItem(`amo-task-color-${key}`);
-                if (saved) {
-                    colors[key].value = saved;
-                    previews[key].style.backgroundColor = saved;
-                } else {
-                    previews[key].style.backgroundColor = colors[key].value;
-                }
-            });
-
-            // Сохранение при клике
-            document.getElementById('btn-save').addEventListener('click', () => {
-                Object.keys(colors).forEach(key => {
-                    localStorage.setItem(`amo-task-color-${key}`, colors[key].value);
-                    previews[key].style.backgroundColor = colors[key].value;
-                });
-                statusMsg.textContent = 'Цвета сохранены!';
-                statusMsg.className = 'status-msg status-success';
-                statusMsg.style.display = 'block';
-                setTimeout(() => statusMsg.style.display = 'none', 2000);
-                applyColoring(); // Перекрашиваем сразу после сохранения
-            });
-
-            // --- Логика раскраски задач ---
-            function applyColoring() {
-                // В amoCRM задачи в карточке сделки имеют класс .task-item или похожий
-                // Мы ищем строки задач и анализируем их содержимое
-                const tasks = document.querySelectorAll('.task-item, .amo-task-row, [class*="task"]');
-
-                tasks.forEach(task => {
-                    const text = task.innerText.toLowerCase();
-
-                    // Условия раскраски (можно менять под себя)
-                    let className = '';
-                    if (text.includes('критичн') || text.includes('срочно') || text.includes('emergency')) {
-                        className = 'amo-task-row-critical';
-                    } else if (text.includes('важно') || text.includes('high') || text.includes('важное')) {
-                        className = 'amo-task-row-high';
-                    } else if (text.includes('средн') || text.includes('normal') || text.includes('обычное')) {
-                        className = 'amo-task-row-medium';
-                    } else if (text.includes('низк') || text.includes('low') || text.includes('не срочно')) {
-                        className = 'amo-task-row-low';
-                    }
-
-                    if (className) {
-                        // Удаляем старые классы раскраски
-                        task.classList.remove(
-                            'amo-task-row-low',
-                            'amo-task-row-medium',
-                            'amo-task-row-high',
-                            'amo-task-row-critical'
-                        );
-                        // Добавляем новый
-                        task.classList.add(className);
-                    }
-                });
-            }
-
-            // Запускаем раскраску при загрузке
-            setTimeout(applyColoring, 800);
-
-            // Следим за динамической подгрузкой задач (если amoCRM обновляет список задач)
-            const observer = new MutationObserver(() => {
-                applyColoring();
-            });
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-        });
-    </script>
-</body>
-</html>
+            width:
