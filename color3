@@ -47,4 +47,188 @@
 
         .preview-box {
             display: inline-block;
-            width:
+            width: 26px; height: 26px;
+            border-radius: 6px; 
+            margin-left: 8px; 
+            vertical-align: middle;
+            border: 1px solid #cbd5e0;
+        }
+
+        .btn-apply {
+            background: #00b5ff; 
+            color: white; 
+            border: none; 
+            padding: 9px 18px;
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .btn-apply:hover { background: #009ad9; }
+
+        /* Цвета для задач - используем полупрозрачные, чтобы текст читался */
+        .amo-task-colored-low { background-color: rgba(144, 198, 249, 0.4) !important; }
+        .amo-task-colored-medium { background-color: rgba(254, 205, 178, 0.4) !important; }
+        .amo-task-colored-high { background-color: rgba(255, 182, 182, 0.4) !important; }
+        .amo-task-colored-critical { 
+            background-color: rgba(239, 108, 108, 0.5) !important; 
+            color: #c53030 !important; /* Делаем текст красным для контраста */
+            font-weight: bold;
+        }
+
+        .status-msg { 
+            margin-top: 10px; 
+            font-size: 13px; 
+            display: none; 
+        }
+        .status-success { color: #2f855a; }
+        .status-error { color: #cc3232; }
+    </style>
+</head>
+<body>
+    <h4>🎨 Раскраска задач в сделке</h4>
+
+    <div class="settings-panel">
+        <div class="color-row">
+            <span class="color-label">Низкая</span>
+            <input type="color" id="color-low" value="#90c6f9">
+            <div id="preview-low" class="preview-box"></div>
+        </div>
+        <div class="color-row">
+            <span class="color-label">Средняя</span>
+            <input type="color" id="color-medium" value="#fecdb2">
+            <div id="preview-medium" class="preview-box"></div>
+        </div>
+        <div class="color-row">
+            <span class="color-label">Высокая</span>
+            <input type="color" id="color-high" value="#ffb6b6">
+            <div id="preview-high" class="preview-box"></div>
+        </div>
+        <div class="color-row">
+            <span class="color-label">Критическая</span>
+            <input type="color" id="color-critical" value="#ef6c6c">
+            <div id="preview-critical" class="preview-box"></div>
+        </div>
+
+        <button class="btn-apply" id="btn-save">Сохранить цвета</button>
+        <p class="status-msg" id="status-msg">Цвета сохранены!</p>
+    </div>
+
+    <!-- SDK amoCRM -->
+    <script src="https://static.amocrm.com/widgets/sdk.js"></script>
+    <script>
+        AmoWidgets.init(function(amo) {
+            // --- Инициализация настроек ---
+            const colors = {
+                low: document.getElementById('color-low'),
+                medium: document.getElementById('color-medium'),
+                high: document.getElementById('color-high'),
+                critical: document.getElementById('color-critical')
+            };
+            const previews = {
+                low: document.getElementById('preview-low'),
+                medium: document.getElementById('preview-medium'),
+                high: document.getElementById('preview-high'),
+                critical: document.getElementById('preview-critical')
+            };
+            const statusMsg = document.getElementById('status-msg');
+
+            // Загрузка сохраненных цветов
+            Object.keys(colors).forEach(key => {
+                const saved = localStorage.getItem(`amo-task-color-${key}`);
+                if (saved) {
+                    colors[key].value = saved;
+                    previews[key].style.backgroundColor = saved;
+                } else {
+                    previews[key].style.backgroundColor = colors[key].value;
+                }
+            });
+
+            document.getElementById('btn-save').addEventListener('click', () => {
+                Object.keys(colors).forEach(key => {
+                    localStorage.setItem(`amo-task-color-${key}`, colors[key].value);
+                    previews[key].style.backgroundColor = colors[key].value;
+                });
+                statusMsg.textContent = 'Цвета сохранены!';
+                statusMsg.className = 'status-msg status-success';
+                statusMsg.style.display = 'block';
+                setTimeout(() => statusMsg.style.display = 'none', 2000);
+                applyColoring(); // Перекрашиваем сразу
+            });
+
+            // --- ГЛАВНАЯ ЛОГИКА: Надежная раскраска ---
+            function applyColoring() {
+                // Ищем строки задач. В новой версии amoCRM задачи часто лежат в div с классом .task-list-item
+                // или в таблице. Пробуем несколько селекторов.
+                const tasks = document.querySelectorAll(
+                    '.task-list-item', 
+                    '[data-testid="task-row"]', 
+                    '.amo-task-row',
+                    'tr[data-task-id]' // Иногда задачи в таблице
+                );
+
+                if (tasks.length === 0) {
+                    console.log('amo-widget: Задачи еще не найдены, жду...');
+                    return false; // Возвращаем false, чтобы таймер продолжил работу
+                }
+
+                console.log(`amo-widget: Найдено задач: ${tasks.length}. Начинаю раскраску.`);
+
+                tasks.forEach(task => {
+                    // Очищаем старые классы
+                    task.classList.remove(
+                        'amo-task-colored-low',
+                        'amo-task-colored-medium',
+                        'amo-task-colored-high',
+                        'amo-task-colored-critical'
+                    );
+
+                    const text = task.innerText.toLowerCase();
+                    let className = '';
+
+                    // Логика определения важности
+                    if (text.includes('критичн') || text.includes('срочно') || text.includes('emergency') || text.includes('deadline')) {
+                        className = 'amo-task-colored-critical';
+                    } else if (text.includes('важно') || text.includes('high') || text.includes('важное') || text.includes('приоритет')) {
+                        className = 'amo-task-colored-high';
+                    } else if (text.includes('средн') || text.includes('normal') || text.includes('обычное') || text.includes('стандарт')) {
+                        className = 'amo-task-colored-medium';
+                    } else if (text.includes('низк') || text.includes('low') || text.includes('не срочно') || text.includes('планово')) {
+                        className = 'amo-task-colored-low';
+                    }
+
+                    if (className) {
+                        task.classList.add(className);
+                    }
+                });
+
+                return true; // Вернули true, значит задачи найдены и покрашены
+            }
+
+            // ЗАПУСК С ТАЙМЕРОМ
+            // Запускаем сразу
+            let attempts = 0;
+            const maxAttempts = 20; // Пробуем 20 раз (10 секунд)
+            
+            const intervalId = setInterval(() => {
+                attempts++;
+                const result = applyColoring();
+                
+                // Если задачи нашлись и покрасились, останавливаем таймер
+                if (result || attempts >= maxAttempts) {
+                    clearInterval(intervalId);
+                }
+            }, 500); // Проверяем каждые 0.5 сек
+
+            // Также слушаем изменения DOM на случай, если задачи добавились позже
+            const observer = new MutationObserver(() => {
+                applyColoring();
+            });
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        });
+    </script>
+</body>
+</html>
